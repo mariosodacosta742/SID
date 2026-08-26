@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safety Injury & Damage (SID) Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5F8;
+    --card:#FFFFFF;
+    --ink:#161D2B;
+    --ink-soft:#5B6472;
+    --border:#DEE3EA;
+    --accent:#2554A6;
+    --accent-dark:#1B3E7E;
+    --accent-tint:#E9F0FB;
+    --warn:#B9770E;
+    --warn-tint:#FDF3E1;
+    --crit:#B42318;
+    --crit-tint:#FDECEA;
+    --ok:#1C7C4D;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.brand{
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* Top bar */
+  .topbar{
+    background:var(--ink);
+    color:#fff;
+    padding:22px 32px;
+  }
+  .topbar .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:#8FA8D6;
+    margin:0 0 6px;
+  }
+  .topbar h1{
+    margin:0;
+    font-size:24px;
+    font-weight:700;
+  }
+  .topbar p{
+    margin:8px 0 0;
+    color:#C3CEE0;
+    font-size:14px;
+    max-width:640px;
+    line-height:1.5;
+  }
+
+  .notice-row{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    padding:16px 32px;
+    background:#101623;
+  }
+  .notice{
+    flex:1 1 260px;
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    padding:10px 14px;
+    border-radius:8px;
+    font-size:13px;
+    line-height:1.45;
+  }
+  .notice.crit{background:rgba(180,35,24,.18); color:#FFD9D2; border:1px solid rgba(255,120,100,.35);}
+  .notice.warn{background:rgba(185,119,14,.18); color:#FFE3AE; border:1px solid rgba(255,190,90,.35);}
+  .notice b{color:#fff;}
+
+  /* Layout */
+  .shell{
+    max-width:1180px;
+    margin:0 auto;
+    padding:28px 24px 80px;
+    display:grid;
+    grid-template-columns:200px minmax(0,1fr) 260px;
+    gap:22px;
+    align-items:start;
+  }
+  @media (max-width:1000px){
+    .shell{grid-template-columns:1fr; }
+    .nav-rail, .snapshot{position:static; order:2;}
+  }
+
+  /* Nav rail */
+  .nav-rail{
+    position:sticky; top:20px;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:10px;
+  }
+  .nav-rail a{
+    display:flex; gap:10px; align-items:center;
+    padding:9px 10px;
+    border-radius:7px;
+    text-decoration:none;
+    color:var(--ink-soft);
+    font-size:13px;
+    font-weight:500;
+    margin-bottom:2px;
+    transition:background .12s ease, color .12s ease;
+  }
+  .nav-rail a:hover{background:var(--accent-tint); color:var(--accent-dark);}
+  .nav-rail a .num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:#9AA4B2;
+    width:20px;
+  }
+  .nav-rail a.active{background:var(--accent-tint); color:var(--accent-dark);}
+  .nav-rail a.active .num{color:var(--accent);}
+
+  /* Main column */
+  .section{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    margin-bottom:18px;
+  }
+  .section-head{
+    display:flex; align-items:baseline; gap:10px;
+    margin-bottom:4px;
+  }
+  .section-head .idx{
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--accent);
+    font-size:13px;
+    font-weight:500;
+  }
+  .section-head h2{
+    font-size:17px; margin:0; font-weight:600;
+  }
+  .section-sub{
+    font-size:13px; color:var(--ink-soft); margin:2px 0 18px; line-height:1.5;
+  }
+  .qa-tag{
+    display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.05em;
+    text-transform:uppercase; color:#8A5A00; background:#FFF3D6; border:1px solid #F0D389;
+    padding:2px 8px; border-radius:5px; margin-left:8px; vertical-align:middle;
+  }
+
+  .field{margin-bottom:18px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{
+    display:block; font-size:13.5px; font-weight:600; margin-bottom:6px;
+  }
+  .field .hint{
+    font-size:12.5px; color:var(--ink-soft); margin:-2px 0 8px; line-height:1.5;
+  }
+  .field .req{color:var(--crit); margin-left:2px;}
+
+  input[type=text], input[type=number], input[type=date], input[type=email], input[type=tel],
+  select, textarea{
+    width:100%;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    padding:9px 11px;
+    border:1px solid var(--border);
+    border-radius:7px;
+    background:#fff;
+    color:var(--ink);
+    transition:border-color .12s ease, box-shadow .12s ease;
+  }
+  textarea{resize:vertical; min-height:80px;}
+  input:focus, select:focus, textarea:focus{
+    outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-tint);
+  }
+  input:invalid:not(:placeholder-shown):not(:focus){ }
+  input:disabled, select:disabled, textarea:disabled{background:#F3F4F6; color:#B7BEC8;}
+
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;}
+  @media (max-width:560px){.row2,.row3{grid-template-columns:1fr;}}
+
+  .pill-group{display:flex; flex-wrap:wrap; gap:8px;}
+  .pill-group label{
+    display:flex; align-items:center; gap:7px;
+    font-size:13.5px; font-weight:500;
+    padding:8px 13px;
+    border:1px solid var(--border);
+    border-radius:100px;
+    cursor:pointer;
+    background:#fff;
+    user-select:none;
+    transition:all .12s ease;
+  }
+  .pill-group input{width:14px; height:14px; accent-color:var(--accent); margin:0;}
+  .pill-group label:has(input:checked){
+    background:var(--accent-tint); border-color:var(--accent); color:var(--accent-dark);
+  }
+
+  .chip-grid{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip-grid label{
+    display:flex; align-items:center; gap:8px;
+    font-size:13px; font-weight:500;
+    padding:8px 12px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    cursor:pointer;
+    background:#fff;
+  }
+  .chip-grid input{width:14px;height:14px;accent-color:var(--accent);margin:0;}
+  .chip-grid label:has(input:checked){background:var(--accent-tint); border-color:var(--accent); color:var(--accent-dark);}
+
+  .file-drop{
+    border:1.5px dashed var(--border);
+    border-radius:9px;
+    padding:16px;
+    text-align:center;
+    font-size:13px;
+    color:var(--ink-soft);
+    background:#FBFCFD;
+  }
+  .file-drop input{margin-top:8px; font-size:12.5px; width:100%;}
+  .file-name{font-size:12px; color:var(--accent-dark); margin-top:6px; font-weight:500;}
+
+  .conditional{
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px dashed var(--border);
+  }
+  .hidden{display:none !important;}
+
+  .banner{
+    display:flex; gap:10px; align-items:flex-start;
+    padding:12px 14px; border-radius:8px; font-size:13.5px; line-height:1.5; margin-top:14px;
+  }
+  .banner.crit{background:var(--crit-tint); color:#7A1710; border:1px solid #F3B9B0;}
+  .banner strong{display:block; margin-bottom:2px;}
+
+  .skip-note{
+    font-size:12.5px; color:var(--ink-soft); font-style:italic; margin-top:10px;
+  }
+
+  /* Snapshot rail */
+  .snapshot{
+    position:sticky; top:20px;
+    background:var(--ink);
+    color:#E7EBF2;
+    border-radius:var(--radius);
+    padding:18px;
+  }
+  .snapshot h3{
+    font-size:13px; margin:0 0 12px;
+    text-transform:uppercase; letter-spacing:.08em;
+    color:#8FA8D6;
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:500;
+  }
+  .snap-row{margin-bottom:12px;}
+  .snap-row .lbl{font-size:11px; color:#8792A3; margin-bottom:3px;}
+  .snap-row .val{font-size:14px; font-weight:600; color:#fff;}
+  .snap-row .val.empty{color:#5B6472; font-weight:400; font-style:italic;}
+  .flag-list{display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;}
+  .flag{
+    font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px;
+  }
+  .flag.safety{background:#4A2F00; color:#FFCF7A;}
+  .flag.injury{background:#4A1512; color:#FF9F92;}
+  .flag.property{background:#0F3A57; color:#8FD0FF;}
+  .flag.none{background:#232C3D; color:#7A8496;}
+  .snap-alert{
+    margin-top:14px; padding:10px 12px; border-radius:8px;
+    background:rgba(180,35,24,.25); border:1px solid rgba(255,120,100,.4);
+    font-size:12.5px; color:#FFD9D2; font-weight:600; line-height:1.4;
+  }
+
+  /* Submit / result */
+  .submit-bar{
+    display:flex; justify-content:flex-end; gap:10px; padding-top:6px;
+  }
+  button{
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14px;
+    border-radius:8px; padding:11px 22px; cursor:pointer; border:1px solid transparent;
+  }
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-ghost{background:#fff; border-color:var(--border); color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--accent-dark);}
+
+  .result-card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:26px; text-align:left;
+  }
+  .result-card h2{margin-top:0;}
+  .result-card pre{
+    background:#F6F7F9; border:1px solid var(--border); border-radius:8px;
+    padding:14px; font-size:12px; max-height:340px; overflow:auto;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .result-actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <p class="eyebrow">Ideal Living · Customer Care</p>
+  <h1>Safety Injury &amp; Damage (SID) Report</h1>
+  <p>Use this form to report incidents involving a potential safety concern, personal injury, or property damage related to an Ideal Living product. Please provide complete and accurate information and upload all available supporting evidence.</p>
+</div>
+<div class="notice-row">
+  <div class="notice crit">⚠️ <span><b>Stop use immediately</b> if the unit sparks internally or the power cord is damaged — instruct the customer right away.</span></div>
+  <div class="notice warn">📦 <span>If the incident is classified <b>Critical</b> or <b>High</b>, request collection of the product for inspection.</span></div>
+</div>
+
+<form id="sidForm" novalidate>
+<div class="shell">
+
+  <!-- NAV -->
+  <nav class="nav-rail" id="navRail">
+    <a href="#sec1" data-target="sec1"><span class="num">00</span>Customer</a>
+    <a href="#sec2" data-target="sec2"><span class="num">01</span>Product</a>
+    <a href="#sec3" data-target="sec3"><span class="num">02</span>Overview</a>
+    <a href="#sec4" data-target="sec4"><span class="num">03</span>Safety</a>
+    <a href="#sec5" data-target="sec5"><span class="num">04</span>Injury</a>
+    <a href="#sec6" data-target="sec6"><span class="num">05</span>Property</a>
+    <a href="#sec7" data-target="sec7"><span class="num">06</span>Evidence</a>
+    <a href="#sec8" data-target="sec8"><span class="num">07</span>Collection</a>
+    <a href="#sec9" data-target="sec9"><span class="num">08</span>Escalation</a>
+    <a href="#sec10" data-target="sec10"><span class="num">09</span>QA</a>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main-col">
+
+  <!-- SECTION 1 -->
+  <section class="section" id="sec1">
+    <div class="section-head"><span class="idx">00</span><h2>Customer Information</h2></div>
+    <div class="row2">
+      <div class="field"><label>First Name<span class="req">*</span></label>
+        <input type="text" id="q1" name="q1" required></div>
+      <div class="field"><label>Last Name<span class="req">*</span></label>
+        <input type="text" id="q2" name="q2" required></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Email Address<span class="req">*</span></label>
+        <input type="email" id="q3" name="q3" required></div>
+      <div class="field"><label>Phone Number<span class="req">*</span></label>
+        <input type="tel" id="q4" name="q4" required></div>
+    </div>
+    <div class="field"><label>Address<span class="req">*</span></label>
+      <textarea id="q5" name="q5" required></textarea></div>
+    <div class="row3">
+      <div class="field"><label>City<span class="req">*</span></label>
+        <input type="text" id="q6" name="q6" required></div>
+      <div class="field"><label>State/Province<span class="req">*</span></label>
+        <input type="text" id="q7" name="q7" required></div>
+      <div class="field"><label>ZIP/Postal Code<span class="req">*</span></label>
+        <input type="text" id="q8" name="q8" required></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Age</label>
+        <input type="number" id="q9" name="q9" min="0"></div>
+      <div class="field"><label>Sex</label>
+        <div class="pill-group">
+          <label><input type="radio" name="q10" value="Male">Male</label>
+          <label><input type="radio" name="q10" value="Female">Female</label>
+          <label><input type="radio" name="q10" value="N/A">N/A</label>
+          <label><input type="radio" name="q10" value="Prefer not to say">Prefer not to say</label>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Is the customer the person reporting the incident?<span class="req">*</span></label>
+      <div class="pill-group" id="q11group">
+        <label><input type="radio" name="q11" value="Yes" required>Yes</label>
+        <label><input type="radio" name="q11" value="No" required>No</label>
+        <label><input type="radio" name="q11" value="N/A" required>N/A</label>
+      </div>
+    </div>
+
+    <div class="conditional hidden" data-cond="q11:eq:No" id="reporterBlock">
+      <div class="row2">
+        <div class="field"><label>Reporter First Name<span class="req">*</span></label>
+          <input type="text" name="reporterFirstName" disabled></div>
+        <div class="field"><label>Reporter Last Name<span class="req">*</span></label>
+          <input type="text" name="reporterLastName" disabled></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Reporter Email<span class="req">*</span></label>
+          <input type="email" name="reporterEmail" disabled></div>
+        <div class="field"><label>Reporter Phone<span class="req">*</span></label>
+          <input type="tel" name="reporterPhone" disabled></div>
+      </div>
+      <div class="field"><label>Relationship to Customer<span class="req">*</span></label>
+        <input type="text" name="reporterRelationship" disabled></div>
+    </div>
+  </section>
+
+  <!-- SECTION 2 -->
+  <section class="section" id="sec2">
+    <div class="section-head"><span class="idx">01</span><h2>Product Information</h2></div>
+    <div class="field"><label>Product Name<span class="req">*</span></label>
+      <select id="q12" name="q12" required>
+        <option value="" disabled selected>Select a product…</option>
+        <option>AirDoctor</option><option>AquaTru</option><option>AromaTru</option>
+        <option>Miracle Blade</option><option>Paint Zoom</option><option>Rotorazer</option>
+        <option>Superthotics</option><option>Walkfit</option><option>Ionic Pro</option><option>Other</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Order Number<span class="req">*</span></label>
+        <input type="text" class="mono" id="q13" name="q13" required></div>
+      <div class="field"><label>Order Date</label>
+        <input type="date" id="q14" name="q14"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Lot Number</label>
+        <input type="text" class="mono" id="q15" name="q15"></div>
+      <div class="field"><label>Place of Purchase<span class="req">*</span></label>
+        <select id="q16" name="q16" required>
+          <option value="" disabled selected>Select…</option>
+          <option>Ideal Living Website</option><option>Phone</option>
+          <option>Online Retailer</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Incident Date<span class="req">*</span></label>
+        <input type="date" id="q17" name="q17" required></div>
+      <div class="field"><label>Date Customer Reported Incident<span class="req">*</span></label>
+        <input type="date" id="q18" name="q18" required></div>
+    </div>
+    <div class="field"><label>Source of Complaint<span class="req">*</span></label>
+      <select id="q19" name="q19" required>
+        <option value="" disabled selected>Select…</option>
+        <option>Email</option><option>Phone</option><option>Web Form</option><option>Chat</option><option>Other</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- SECTION 3 -->
+  <section class="section" id="sec3">
+    <div class="section-head"><span class="idx">02</span><h2>Incident Overview</h2></div>
+    <div class="field"><label>What happened?<span class="req">*</span></label>
+      <p class="hint">Please provide a detailed description of what happened, including what the customer was doing when the incident occurred, what happened to the product, and any resulting injury or damage.</p>
+      <textarea id="q20" name="q20" rows="4" required></textarea>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Was the product being used according to its intended use?<span class="req">*</span></label>
+        <div class="pill-group">
+          <label><input type="radio" name="q21" value="Yes" required>Yes</label>
+          <label><input type="radio" name="q21" value="No" required>No</label>
+          <label><input type="radio" name="q21" value="Unknown" required>Unknown</label>
+        </div>
+      </div>
+      <div class="field"><label>Is the customer still using the product?<span class="req">*</span></label>
+        <div class="pill-group">
+          <label><input type="radio" name="q22" value="Yes" required>Yes</label>
+          <label><input type="radio" name="q22" value="No" required>No</label>
+          <label><input type="radio" name="q22" value="Unknown" required>Unknown</label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4 -->
+  <section class="section" id="sec4">
+    <div class="section-head"><span class="idx">03</span><h2>Safety Concern</h2></div>
+    <div class="field"><label>Does this incident involve a Safety Concern?<span class="req">*</span></label>
+      <div class="pill-group">
+        <label><input type="radio" name="q23" value="Yes" required>Yes</label>
+        <label><input type="radio" name="q23" value="No" required>No</label>
+      </div>
+      <p class="skip-note" id="q23skip">If “No,” this section is skipped and the form continues to Personal Injury.</p>
+    </div>
+
+    <div class="conditional hidden" data-cond="q23:eq:Yes" id="safetyBlock">
+      <div class="field"><label>Severity Level<span class="req">*</span></label>
+        <div class="pill-group">
+          <label><input type="radio" name="q24" value="Critical" disabled>Critical</label>
+          <label><input type="radio" name="q24" value="High" disabled>High</label>
+          <label><input type="radio" name="q24" value="Moderate" disabled>Moderate</label>
+        </div>
+      </div>
+      <div class="field"><label>Safety Concern — select all that apply<span class="req">*</span></label>
+        <div class="chip-grid" id="q25group">
+          <label><input type="checkbox" name="q25" value="Fire or flames" disabled>Fire or flames</label>
+          <label><input type="checkbox" name="q25" value="Smoke, burning smell, or melting/charring" disabled>Smoke, burning smell, or melting/charring</label>
+          <label><input type="checkbox" name="q25" value="Overheating / thermal event" disabled>Overheating / thermal event</label>
+          <label><input type="checkbox" name="q25" value="Electric shock or electrocution" disabled>Electric shock or electrocution</label>
+          <label><input type="checkbox" name="q25" value="Sparking, arcing, or electrical short" disabled>Sparking, arcing, or electrical short</label>
+          <label><input type="checkbox" name="q25" value="Water leak or flooding" disabled>Water leak or flooding</label>
+          <label><input type="checkbox" name="q25" value="Chemical or oil exposure — AromaTru" disabled>Chemical or oil exposure — AromaTru</label>
+          <label><input type="checkbox" name="q25" value="Contaminated water — AquaTru" disabled>Contaminated water — AquaTru</label>
+          <label><input type="checkbox" name="q25" value="Explosion, rupture, or projectile" disabled>Explosion, rupture, or projectile</label>
+          <label><input type="checkbox" name="q25" value="Battery/power-supply failure" disabled>Battery/power-supply failure</label>
+          <label><input type="checkbox" name="q25" value="Other" data-other-toggle disabled>Other</label>
+        </div>
+      </div>
+
+      <div class="field conditional hidden" data-cond="q25:includes:Other" id="q26block">
+        <label>Other Safety Concern</label>
+        <textarea name="q26" disabled></textarea>
+      </div>
+
+      <div class="field"><label>Safety Concern Details<span class="req">*</span></label>
+        <p class="hint">Describe what happened, when it occurred, what the customer observed, and whether the condition is still present.</p>
+        <textarea name="q27" rows="3" disabled></textarea>
+      </div>
+
+      <div class="field"><label>Did the unit spark internally or is the power cord damaged?<span class="req">*</span></label>
+        <div class="pill-group" id="q28group">
+          <label><input type="radio" name="q28" value="Yes" disabled>Yes</label>
+          <label><input type="radio" name="q28" value="No" disabled>No</label>
+          <label><input type="radio" name="q28" value="Unknown" disabled>Unknown</label>
+        </div>
+        <div class="banner crit hidden" data-cond="q28:eq:Yes" id="stopUseBanner">
+          <span>⚠️</span>
+          <div><strong>Stop use immediately</strong>Instruct the customer to stop using the unit immediately.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5 -->
+  <section class="section" id="sec5">
+    <div class="section-head"><span class="idx">04</span><h2>Personal Injury</h2></div>
+    <div class="field"><label>Does this incident involve Personal Injury?<span class="req">*</span></label>
+      <div class="pill-group">
+        <label><input type="radio" name="q29" value="Yes" required>Yes</label>
+        <label><input type="radio" name="q29" value="No" required>No</label>
+      </div>
+      <p class="skip-note">If “No,” this section is skipped and the form continues to Property Damage.</p>
+    </div>
+
+    <div class="conditional hidden" data-cond="q29:eq:Yes" id="injuryBlock">
+      <div class="field"><label>Severity Level<span class="req">*</span></label>
+        <div class="pill-group">
+          <label><input type="radio" name="q30" value="Critical" disabled>Critical</label>
+          <label><input type="radio" name="q30" value="High" disabled>High</label>
+          <label><input type="radio" name="q30" value="Moderate" disabled>Moderate</label>
+        </div>
+      </div>
+      <div class="field"><label>Injury Type — select all that apply<span class="req">*</span></label>
+        <div class="chip-grid" id="q31group">
+          <label><input type="checkbox" name="q31" value="Death" disabled>Death</label>
+          <label><input type="checkbox" name="q31" value="Burn" disabled>Burn</label>
+          <label><input type="checkbox" name="q31" value="Cut or laceration" disabled>Cut or laceration</label>
+          <label><input type="checkbox" name="q31" value="Respiratory injury/difficulty breathing" disabled>Respiratory injury/difficulty breathing</label>
+          <label><input type="checkbox" name="q31" value="Ingestion" disabled>Ingestion</label>
+          <label><input type="checkbox" name="q31" value="Electric shock/electrocution" disabled>Electric shock/electrocution</label>
+          <label><input type="checkbox" name="q31" value="Chemical exposure" disabled>Chemical exposure</label>
+          <label><input type="checkbox" name="q31" value="Eye injury" disabled>Eye injury</label>
+          <label><input type="checkbox" name="q31" value="Other physical injury" data-other-toggle disabled>Other physical injury</label>
+        </div>
+      </div>
+
+      <div class="field conditional hidden" data-cond="q31:includes:Other physical injury" id="q32block">
+        <label>Other Injury</label>
+        <textarea name="q32" disabled></textarea>
+      </div>
+
+      <div class="row3">
+        <div class="field"><label>Did the customer seek medical attention?<span class="req">*</span></label>
+          <div class="pill-group">
+            <label><input type="radio" name="q33" value="Yes" disabled>Yes</label>
+            <label><input type="radio" name="q33" value="No" disabled>No</label>
+            <label><input type="radio" name="q33" value="Unknown" disabled>Unknown</label>
+          </div>
+        </div>
+        <div class="field"><label>Was the customer hospitalized?<span class="req">*</span></label>
+          <div class="pill-group">
+            <label><input type="radio" name="q34" value="Yes" disabled>Yes</label>
+            <label><input type="radio" name="q34" value="No" disabled>No</label>
+            <label><input type="radio" name="q34" value="Unknown" disabled>Unknown</label>
+          </div>
+        </div>
+        <div class="field"><label>Was medical treatment provided?<span class="req">*</span></label>
+          <div class="pill-group">
+            <label><input type="radio" name="q35" value="Yes" disabled>Yes</label>
+            <label><input type="radio" name="q35" value="No" disabled>No</label>
+            <label><input type="radio" name="q35" value="Unknown" disabled>Unknown</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field"><label>Injury Details<span class="req">*</span></label>
+        <p class="hint">Describe the injury, body area affected, when it occurred, and any medical treatment received.</p>
+        <textarea name="q36" rows="3" disabled></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 6 -->
+  <section class="section" id="sec6">
+    <div class="section-head"><span class="idx">05</span><h2>Property Damage</h2></div>
+    <div class="field"><label>Does this incident involve Property Damage?<span class="req">*</span></label>
+      <div class="pill-group">
+        <label><input type="radio" name="q37" value="Yes" required>Yes</label>
+        <label><input type="radio" name="q37" value="No" required>No</label>
+      </div>
+      <p class="skip-note">If “No,” this section is skipped and the form continues to Evidence.</p>
+    </div>
+
+    <div class="conditional hidden" data-cond="q37:eq:Yes" id="propertyBlock">
+      <div class="field"><label>Severity Level<span class="req">*</span></label>
+        <div class="pill-group">
+          <label><input type="radio" name="q38" value="Critical" disabled>Critical</label>
+          <label><input type="radio" name="q38" value="High" disabled>High</label>
+          <label><input type="radio" name="q38" value="Moderate" disabled>Moderate</label>
+        </div>
+      </div>
+      <div class="field"><label>Property Damage — select all that apply<span class="req">*</span></label>
+        <div class="chip-grid">
+          <label><input type="checkbox" name="q39" value="Fire/fire spread" disabled>Fire/fire spread</label>
+          <label><input type="checkbox" name="q39" value="Smoke or soot damage" disabled>Smoke or soot damage</label>
+          <label><input type="checkbox" name="q39" value="Water leak/flooding" disabled>Water leak/flooding</label>
+          <label><input type="checkbox" name="q39" value="Flooring" disabled>Flooring</label>
+          <label><input type="checkbox" name="q39" value="Cabinets" disabled>Cabinets</label>
+          <label><input type="checkbox" name="q39" value="Countertop" disabled>Countertop</label>
+          <label><input type="checkbox" name="q39" value="Under sink" disabled>Under sink</label>
+          <label><input type="checkbox" name="q39" value="Walls/ceiling" disabled>Walls/ceiling</label>
+          <label><input type="checkbox" name="q39" value="Furniture/personal belongings" disabled>Furniture/personal belongings</label>
+          <label><input type="checkbox" name="q39" value="Electrical/property damage" disabled>Electrical/property damage</label>
+          <label><input type="checkbox" name="q39" value="Other" disabled>Other</label>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Damage Location<span class="req">*</span></label>
+          <input type="text" name="q40" disabled></div>
+        <div class="field"><label>Estimated Repair Cost</label>
+          <input type="text" name="q41" disabled placeholder="$"></div>
+      </div>
+      <div class="field"><label>De-installation/Re-installation Cost</label>
+        <input type="text" name="q42" disabled placeholder="$"></div>
+      <div class="field"><label>Property Damage Details<span class="req">*</span></label>
+        <p class="hint">Describe the damage, affected area(s), and estimated extent of the damage.</p>
+        <textarea name="q43" rows="3" disabled></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 7 -->
+  <section class="section" id="sec7">
+    <div class="section-head"><span class="idx">06</span><h2>Evidence</h2></div>
+    <div class="row2">
+      <div class="field"><label>Product Photos</label>
+        <div class="file-drop">Upload photos showing the product and any visible damage.
+          <input type="file" name="q44" multiple accept="image/*"></div>
+      </div>
+      <div class="field"><label>Property Damage Photos</label>
+        <div class="file-drop">Upload photos showing the affected area and property damage.
+          <input type="file" name="q45" multiple accept="image/*"></div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Product Video</label>
+        <div class="file-drop">Upload a video showing the product and/or reported issue, if available.
+          <input type="file" name="q46" accept="video/*"></div>
+      </div>
+      <div class="field"><label>Supporting Documentation</label>
+        <div class="file-drop">Upload any relevant medical documentation, repair estimates, receipts, insurance documentation, or other supporting evidence.
+          <input type="file" name="q47" multiple></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 8 -->
+  <section class="section" id="sec8">
+    <div class="section-head"><span class="idx">07</span><h2>Product Collection &amp; Inspection</h2></div>
+    <div class="field"><label>Is product collection required?<span class="req">*</span></label>
+      <div class="pill-group">
+        <label><input type="radio" name="q48" value="Yes" required>Yes</label>
+        <label><input type="radio" name="q48" value="No" required>No</label>
+        <label><input type="radio" name="q48" value="Pending Review" required>Pending Review</label>
+      </div>
+    </div>
+    <div class="field"><label>Has the customer agreed to return the product?</label>
+      <div class="pill-group">
+        <label><input type="radio" name="q49" value="Yes">Yes</label>
+        <label><input type="radio" name="q49" value="No">No</label>
+        <label><input type="radio" name="q49" value="Pending">Pending</label>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Return Tracking Number</label>
+        <input type="text" class="mono" name="q50"></div>
+      <div class="field"><label>Product Returned for Inspection?</label>
+        <div class="pill-group">
+          <label><input type="radio" name="q51" value="Yes">Yes</label>
+          <label><input type="radio" name="q51" value="No">No</label>
+          <label><input type="radio" name="q51" value="Pending">Pending</label>
+          <label><input type="radio" name="q51" value="N/A">N/A</label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 9 -->
+  <section class="section" id="sec9">
+    <div class="section-head"><span class="idx">08</span><h2>Escalation</h2></div>
+    <div class="row2">
+      <div class="field"><label>Does this incident require supervisor escalation?<span class="req">*</span></label>
+        <div class="pill-group">
+          <label><input type="radio" name="q52" value="Yes" required>Yes</label>
+          <label><input type="radio" name="q52" value="No" required>No</label>
+        </div>
+      </div>
+      <div class="field"><label>Supervisor Call Requested?<span class="req">*</span></label>
+        <div class="pill-group">
+          <label><input type="radio" name="q53" value="Yes" required>Yes</label>
+          <label><input type="radio" name="q53" value="No" required>No</label>
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>Escalation Reason</label>
+      <textarea name="q54"></textarea></div>
+    <div class="field"><label>QA Notes</label>
+      <textarea name="q55"></textarea></div>
+  </section>
+
+  <!-- SECTION 10 -->
+  <section class="section" id="sec10">
+    <div class="section-head"><span class="idx">09</span><h2>Internal Classification<span class="qa-tag">QA / Internal only</span></h2></div>
+    <p class="section-sub">Restricted to QA/internal use once this form is migrated into Zendesk. For this prototype, the agent selects severity — QA reviews and confirms it afterward.</p>
+    <div class="row2">
+      <div class="field"><label>Overall Severity</label>
+        <div class="pill-group">
+          <label><input type="radio" name="q56" value="Critical">Critical</label>
+          <label><input type="radio" name="q56" value="High">High</label>
+          <label><input type="radio" name="q56" value="Moderate">Moderate</label>
+        </div>
+      </div>
+      <div class="field"><label>Primary Incident Category</label>
+        <div class="pill-group">
+          <label><input type="radio" name="q57" value="Safety Concern">Safety Concern</label>
+          <label><input type="radio" name="q57" value="Personal Injury">Personal Injury</label>
+          <label><input type="radio" name="q57" value="Property Damage">Property Damage</label>
+          <label><input type="radio" name="q57" value="Multiple Categories">Multiple Categories</label>
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>Final QA Comments</label>
+      <textarea name="q58"></textarea></div>
+
+    <p class="section-sub" style="margin-top:16px;">
+      <strong style="color:var(--ink)">Severity guidance</strong><br>
+      <strong>Critical</strong> — death, hospitalization, serious injury, fire spread, explosion, electrocution, or severe/significant property damage.<br>
+      <strong>High</strong> — injury requiring medical attention, significant property damage, major water damage, or a serious safety event without confirmed critical consequences.<br>
+      <strong>Moderate</strong> — minor injury, contained property damage, or a safety concern that does not involve medical treatment or significant damage.
+    </p>
+
+    <div class="submit-bar">
+      <button type="button" class="btn-ghost" id="resetBtn">Clear form</button>
+      <button type="submit" class="btn-primary">Submit report</button>
+    </div>
+  </section>
+
+  </div><!-- /main-col -->
+
+  <!-- SNAPSHOT -->
+  <aside class="snapshot" id="snapshot">
+    <h3>Incident Snapshot</h3>
+    <div class="snap-row"><div class="lbl">Customer</div><div class="val empty" id="snapName">Not entered</div></div>
+    <div class="snap-row"><div class="lbl">Product</div><div class="val empty" id="snapProduct">Not selected</div></div>
+    <div class="snap-row"><div class="lbl">Categories flagged</div>
+      <div class="flag-list" id="snapFlags"><span class="flag none">None yet</span></div>
+    </div>
+    <div class="snap-alert hidden" id="snapStopUse">⚠️ Stop-use warning active — instruct customer immediately.</div>
+  </aside>
+
+</div>
+</form>
+
+<div id="resultOverlay" style="display:none; position:fixed; inset:0; background:rgba(15,20,30,.55); padding:30px; overflow:auto; z-index:50;">
+  <div style="max-width:640px; margin:0 auto;">
+    <div class="result-card">
+      <h2>✅ Report captured</h2>
+      <p style="color:var(--ink-soft); font-size:13.5px;">This prototype has no live backend yet — here is the structured record that would be sent to Zendesk / QA. Copy or download it, or print this page for a paper record.</p>
+      <pre id="resultJson"></pre>
+      <div class="result-actions">
+        <button class="btn-primary" id="downloadJsonBtn">Download JSON</button>
+        <button class="btn-ghost" id="copyJsonBtn">Copy to clipboard</button>
+        <button class="btn-ghost" id="closeResultBtn">Back to form</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById('sidForm');
+
+// ---------- Conditional logic ----------
+function getFieldValue(name){
+  const radio = form.querySelector(`input[type=radio][name="${name}"]:checked`);
+  if(radio) return radio.value;
+  const checks = form.querySelectorAll(`input[type=checkbox][name="${name}"]:checked`);
+  if(checks.length) return Array.from(checks).map(c=>c.value);
+  const el = form.querySelector(`[name="${name}"]`);
+  if(el && (el.tagName==='SELECT' || el.tagName==='TEXTAREA' || el.tagName==='INPUT')) return el.value;
+  return undefined;
+}
+
+function conditionMet(condStr){
+  const [name, op, expected] = condStr.split(':');
+  const val = getFieldValue(name);
+  if(op === 'eq') return val === expected;
+  if(op === 'includes') return Array.isArray(val) && val.includes(expected);
+  return false;
+}
+
+function setEnabled(container, enabled){
+  container.querySelectorAll('input, select, textarea').forEach(el=>{ el.disabled = !enabled; });
+}
+
+function evaluateConditionals(){
+  document.querySelectorAll('[data-cond]').forEach(el=>{
+    const met = conditionMet(el.dataset.cond);
+    el.classList.toggle('hidden', !met);
+    setEnabled(el, met);
+  });
+}
+
+form.addEventListener('input', evaluateConditionals);
+form.addEventListener('change', evaluateConditionals);
+
+// ---------- "Select at least one" custom validity for required checkbox groups ----------
+const requiredCheckboxGroups = ['q25','q31','q39'];
+requiredCheckboxGroups.forEach(name=>{
+  const boxes = () => Array.from(form.querySelectorAll(`input[type=checkbox][name="${name}"]`));
+  function refresh(){
+    const group = boxes();
+    if(!group.length) return;
+    const anyEnabled = group.some(b=>!b.disabled);
+    const anyChecked = group.some(b=>b.checked);
+    group.forEach(b=>b.setCustomValidity(''));
+    if(anyEnabled && !anyChecked){
+      group[0].setCustomValidity('Select at least one option that applies.');
+    }
+  }
+  form.addEventListener('change', refresh);
+});
+// q39 isn't marked required in the source doc's required list ambiguity guard — still enforce "at least one" if section active
+document.addEventListener('DOMContentLoaded', ()=>{
+  form.querySelectorAll('input[type=checkbox][name="q25"], input[type=checkbox][name="q31"], input[type=checkbox][name="q39"]').forEach(b=>{
+    if(!b.hasAttribute('required')) b.setAttribute('required',''); // enables :invalid styling / group semantics via customValidity above
+  });
+});
+
+// ---------- Snapshot panel ----------
+function updateSnapshot(){
+  const first = getFieldValue('q1') || '';
+  const last = getFieldValue('q2') || '';
+  const name = (first + ' ' + last).trim();
+  const nameEl = document.getElementById('snapName');
+  nameEl.textContent = name || 'Not entered';
+  nameEl.classList.toggle('empty', !name);
+
+  const product = getFieldValue('q12');
+  const prodEl = document.getElementById('snapProduct');
+  prodEl.textContent = product || 'Not selected';
+  prodEl.classList.toggle('empty', !product);
+
+  const flags = [];
+  if(getFieldValue('q23') === 'Yes') flags.push(['Safety Concern','safety']);
+  if(getFieldValue('q29') === 'Yes') flags.push(['Personal Injury','injury']);
+  if(getFieldValue('q37') === 'Yes') flags.push(['Property Damage','property']);
+  const flagsEl = document.getElementById('snapFlags');
+  flagsEl.innerHTML = flags.length
+    ? flags.map(([label,cls])=>`<span class="flag ${cls}">${label}</span>`).join('')
+    : '<span class="flag none">None yet</span>';
+
+  document.getElementById('snapStopUse').classList.toggle('hidden', getFieldValue('q28') !== 'Yes');
+}
+form.addEventListener('input', updateSnapshot);
+form.addEventListener('change', updateSnapshot);
+
+// ---------- File name display ----------
+form.querySelectorAll('.file-drop input[type=file]').forEach(inp=>{
+  inp.addEventListener('change', ()=>{
+    let tag = inp.parentElement.querySelector('.file-name');
+    if(!tag){ tag = document.createElement('div'); tag.className='file-name'; inp.parentElement.appendChild(tag); }
+    tag.textContent = inp.files.length ? Array.from(inp.files).map(f=>f.name).join(', ') : '';
+  });
+});
+
+// ---------- Nav rail active state on scroll ----------
+const navLinks = Array.from(document.querySelectorAll('#navRail a'));
+const sections = navLinks.map(a=>document.getElementById(a.dataset.target));
+window.addEventListener('scroll', ()=>{
+  let current = sections[0];
+  sections.forEach(s=>{ if(window.scrollY >= s.offsetTop - 120) current = s; });
+  navLinks.forEach(a=>a.classList.toggle('active', a.dataset.target === current.id));
+}, {passive:true});
+
+// ---------- Reset ----------
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(confirm('Clear all entered data? This cannot be undone.')){
+    form.reset();
+    evaluateConditionals();
+    updateSnapshot();
+    form.querySelectorAll('.file-name').forEach(t=>t.textContent='');
+  }
+});
+
+// ---------- Submit ----------
+form.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  if(!form.checkValidity()){
+    form.reportValidity();
+    return;
+  }
+  const data = {};
+  new FormData(form).forEach((value, key)=>{
+    if(value instanceof File){
+      if(!value.name) return;
+      data[key] = data[key] ? [].concat(data[key], value.name) : value.name;
+    } else {
+      if(data[key] !== undefined){
+        data[key] = [].concat(data[key], value);
+      } else {
+        data[key] = value;
+      }
+    }
+  });
+  data['_submittedAt'] = new Date().toISOString();
+
+  document.getElementById('resultJson').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('resultOverlay').style.display = 'block';
+  window.__sidData = data;
+});
+
+document.getElementById('closeResultBtn').addEventListener('click', ()=>{
+  document.getElementById('resultOverlay').style.display = 'none';
+});
+document.getElementById('downloadJsonBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(window.__sidData, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'sid-report.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('copyJsonBtn').addEventListener('click', ()=>{
+  navigator.clipboard.writeText(JSON.stringify(window.__sidData, null, 2))
+    .then(()=>{ const b=document.getElementById('copyJsonBtn'); const old=b.textContent; b.textContent='Copied!'; setTimeout(()=>b.textContent=old,1200); });
+});
+
+// init
+evaluateConditionals();
+updateSnapshot();
+</script>
+</body>
+</html>
